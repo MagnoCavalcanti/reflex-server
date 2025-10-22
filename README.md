@@ -30,46 +30,21 @@ backend/
 │
 ├── app/
 │   ├── main.py                     # Ponto de entrada da aplicação
-│   ├── core/                       # Configurações e infraestrutura
-│   │   ├── config.py               # Variáveis de ambiente e setup
-│   │   ├── database.py             # Conexão com o banco de dados
-│   │   ├── security.py             # Autenticação e JWT
-│   │   └── exceptions.py           # Tratamento centralizado de erros
+│   ├── core/                       # Configurações e infraestrutura 
 │   │
 │   ├── models/                     # Modelos do banco (SQLAlchemy)
-│   │   ├── user_model.py
-│   │   ├── course_model.py
-│   │   └── quiz_model.py
 │   │
 │   ├── schemas/                    # Validação e contratos da API (Pydantic)
-│   │   ├── user_schema.py
-│   │   ├── course_schema.py
-│   │   └── quiz_schema.py
 │   │
 │   ├── repositories/               # Acesso a dados (CRUD)
-│   │   ├── user_repository.py
-│   │   ├── course_repository.py
-│   │   └── quiz_repository.py
 │   │
 │   ├── services/                   # Regras de negócio
-│   │   ├── user_service.py
-│   │   ├── course_service.py
-│   │   └── quiz_service.py
 │   │
 │   ├── routers/                    # Endpoints da API
-│   │   ├── user_router.py
-│   │   ├── course_router.py
-│   │   └── quiz_router.py
 │   │
 │   ├── tests/                      # Testes unitários e de integração
-│   │   ├── test_users.py
-│   │   ├── test_courses.py
-│   │   └── test_quizzes.py
 │   │
 │   └── utils/                      # Funções auxiliares
-│       ├── file_utils.py
-│       ├── video_utils.py
-│       └── response_utils.py
 │
 ├── requirements.txt                # Dependências do projeto
 ├── .env.example                    # Modelo de variáveis de ambiente
@@ -102,6 +77,9 @@ backend/
 1. Crie um ambiente virtual
 ```bash
 python -m venv venv
+```
+```bash
+venv/Scripts/activate
 ```
 
 2. Instale as dependências

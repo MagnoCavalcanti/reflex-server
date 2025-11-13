@@ -4,8 +4,9 @@ from fastapi import status, HTTPException
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from decouple import config
+from datetime import datetime, timedelta, timezone
 
-from ..schemas import User as UserSchema
+from ..schemas import UserLogin, User as UserSchema
 from ..models import User as UserModel
 
 
@@ -37,5 +38,53 @@ class AuthUseCases:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao salvar dados"
+            )
+        
+    def login(self, user: UserLogin):
+        user_db = self.db.query(UserModel).filter_by(username=user.username).first()
+
+        if user_db is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Login inválido!'
+            )
+        
+        if not crypt_context.verify(user.password, user_db.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Login inválido!'
+            )
+        
+        exp = datetime.now(timezone.utc) + timedelta(minutes=30)
+        
+        payload = {
+            "sub": user.username,
+            "exp": exp
+        }
+
+        access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+        return {
+            "access_token": access_token,  # Mudança para "access_token"
+            "token_type": "bearer",          # Adicionando "token_type"
+            "exp": exp.isoformat("T")        # Adicionando "exp"
+        }
+        
+    
+    def verify_token(self, token: str):
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_on_db = self.db.query(UserModel).filter_by(username=data['sub']).first()
+
+            if user_on_db is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail='Token inválido'
+                )
+            return data
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Token inválido'
             )
 

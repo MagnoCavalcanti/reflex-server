@@ -1,1 +1,1 @@
-from .models import Base, User
+from .models import Base, User, Course, Module, CourseEnrollment, Lesson

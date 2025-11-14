@@ -9,6 +9,17 @@ class User(BaseModel):
     email: str
     fullname: str
     telephone: str = '(XX)XXXXX-XXXX'
+    type_user: str = 'A'  # Default to 'A' for aluno
+
+    @field_validator('type_user')
+    @classmethod   
+    def validate_type_user(cls, v):
+        if v not in ('A', 'P'):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Tipo de usuário inválido. Use 'A' para aluno ou 'P' para professor."
+            )
+        return v
 
     @field_validator('email')
     @classmethod

@@ -1,1 +1,1 @@
-from .dependencies import get_db_session
+from .dependencies import get_db_session, get_current_user

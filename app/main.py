@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 
-from .routers import auth_router
+from .utils import get_current_user
+from .routers import auth_router, course_router
 
 app = FastAPI()
 
@@ -12,3 +13,4 @@ def home():
 
 
 app.include_router(auth_router)
+app.include_router(course_router)

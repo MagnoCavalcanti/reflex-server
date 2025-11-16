@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from ..models import Module as ModuleModel
 from ..schemas import Module as ModuleSchema
@@ -7,45 +7,24 @@ from ..schemas import Module as ModuleSchema
 
 class ModuleUseCases:
 
-    @staticmethod
-    def list_all(db: Session):
-        return db.query(ModuleModel).all()
+    def __init__(self, db_session: Session):
+        self.db = db_session
 
-    @staticmethod
-    def create(db: Session, data: ModuleSchema):
-        module = ModuleModel(
-            title=data.title,
-            course_id=data.course_id
-        )
-        db.add(module)
-        db.commit()
-        db.refresh(module)
-        return module
+    def list_all(self):
+        return self.db.query(ModuleModel).all()
 
-    @staticmethod
-    def update(db: Session, module_id: int, data: ModuleSchema):
-        module = db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
+    def create(self, data: ModuleSchema):
+        try:
+            module = ModuleModel(**data.__dict__)
+            self.db.add(module)
+            self.db.commit()
+            self.db.refresh(module)
+            return module
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao criar módulo")
+        
 
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
-
-        module.title = data.title
-        module.course_id = data.course_id
-
-        db.commit()
-        db.refresh(module)
-        return module
-
-    @staticmethod
-    def delete(db: Session, module_id: int):
-        module = db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
-
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
-
-        db.delete(module)
-        db.commit()
-
-        return {"message": "Módulo deletado com sucesso."}
+    
 
 

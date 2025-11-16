@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import List
 
 from app.utils.dependencies import get_db_session
 from app.repositories.lesson_repo import LessonUseCases
@@ -10,17 +10,21 @@ lesson_router = APIRouter(prefix="/lessons")
 
 @lesson_router.get("/")
 def list_lessons(db: Session = Depends(get_db_session)):
-    return LessonUseCases.list_all(db)
+    lesson_uc = LessonUseCases(db)
+    lessons = lesson_uc.list_all()
+    return JSONResponse(
+        content=lessons,
+        status_code=status.HTTP_200_OK
+    )
 
 @lesson_router.post("/")
 def create_lesson(lesson: LessonSchema, db: Session = Depends(get_db_session)):
-    return LessonUseCases.create(db, lesson)
+    lesson_uc = LessonUseCases(db)
+    lesson_uc.create(lesson)
+    return JSONResponse(
+        content={ "msg": "success" },
+        status_code=status.HTTP_201_CREATED
+    )
 
-@lesson_router.put("/{lesson_id}")
-def update_lesson(lesson_id: int, data: LessonSchema, db: Session = Depends(get_db_session)):
-    return LessonUseCases.update(db, lesson_id, data)
 
-@lesson_router.delete("/{lesson_id}")
-def delete_lesson(lesson_id: int, db: Session = Depends(get_db_session)):
-    return LessonUseCases.delete(db, lesson_id)
 

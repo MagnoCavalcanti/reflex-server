@@ -43,7 +43,35 @@ class CourseEnrollment(Base):
 class Lesson(Base):
     __tablename__ = 'lessons'
     id = Column('id', Integer, autoincrement=True, primary_key=True)
+    title = Column('title', String, nullable=False)
     content_type = Column('content_type', String)
     done = Column('done', Boolean, default=False)
     module_id = Column('module_id', Integer, ForeignKey('modules.id'))
+
+    __table_args__ = (
+        CheckConstraint("content_type IN ('V', 'Q')", name='chk_content_type_values'),
+    )
     
+class LessonVideo(Base):
+    __tablename__ = 'lesson_videos'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    lesson_id = Column('lesson_id', Integer, ForeignKey('lessons.id'))
+    video_url = Column('video_url', String, nullable=False)
+
+class LessonQuiz(Base):
+    __tablename__ = 'lesson_quizzes'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    lesson_id = Column('lesson_id', Integer, ForeignKey('lessons.id'))
+
+class QuizQuestion(Base):
+    __tablename__ = 'quiz_questions'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    quiz_id = Column('quiz_id', Integer, ForeignKey('lesson_quizzes.id'))
+    question_text = Column('question_text', Text, nullable=False)
+
+class QuizOption(Base):
+    __tablename__ = 'quiz_options'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    question_id = Column('question_id', Integer, ForeignKey('quiz_questions.id'))
+    option_text = Column('option_text', Text, nullable=False)
+    is_correct = Column('is_correct', Boolean, default=False)

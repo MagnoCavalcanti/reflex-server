@@ -17,7 +17,7 @@ def home():
 
 
 app.include_router(auth_router, tags=["auth"])
-app.include_router(course_router, tags=["courses"])
-app.include_router(module_router, tags=["modules"])
-app.include_router(lesson_router, tags=["lessons"])
+app.include_router(course_router, tags=["courses"], dependencies=[Depends(get_current_user)])
+app.include_router(module_router, tags=["modules"], dependencies=[Depends(get_current_user)])
+app.include_router(lesson_router, tags=["lessons"], dependencies=[Depends(get_current_user)])
 

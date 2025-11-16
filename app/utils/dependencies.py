@@ -23,7 +23,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         # Decodifica o token
-        uc = AuthUseCases(dbsession=db)
+        uc = AuthUseCases(db)
         payload = uc.verify_token(token)
         
         return payload

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from ..utils import get_db_session 
@@ -14,7 +15,7 @@ def list_courses(db: Session = Depends(get_db_session)):
     course_uc = CoursesUseCases(db)
     courses = course_uc.list_courses()
     return JSONResponse(
-        content=courses,
+        content=jsonable_encoder(courses),
         status_code=status.HTTP_200_OK
     )
 

@@ -3,8 +3,8 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
-from ..utils import get_db_session 
-from ..repositories.course_repo import CoursesUseCases
+from ..utils import get_db_session, get_current_user
+from ..repositories import CoursesUseCases, UserUseCases
 from ..schemas import Course as CourseSchema
 
 
@@ -28,3 +28,11 @@ def create_course(course_data: CourseSchema, db: Session = Depends(get_db_sessio
         status_code=status.HTTP_201_CREATED
     )
 
+@course_router.post("/enrollments")
+def enroll_in_course(course_id: int, db: Session = Depends(get_db_session), current_user: dict = Depends(get_current_user)):
+    user_uc = UserUseCases(db)
+    user_uc.enroll(current_user["sub"], course_id)
+    return JSONResponse(
+        content={ "msg": "success" },
+        status_code=status.HTTP_201_CREATED
+    )

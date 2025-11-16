@@ -55,7 +55,7 @@ class AuthUseCases:
                 detail='Login inválido!'
             )
         
-        exp = datetime.now(timezone.utc) + timedelta(minutes=30)
+        exp = datetime.now(timezone.utc) + timedelta(minutes=500) # Token válido por 500 minutos, mudar posteriormente
         
         payload = {
             "sub": user.username,

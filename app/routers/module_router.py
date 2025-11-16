@@ -2,30 +2,27 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.utils.dependencies import get_db_session
-from app.repositories.module_repo import ModuleRepository
-from app.schemas.Module import ModuleCreate, ModuleResponse, ModuleUpdate
+from app.utils import get_db_session
+from app.repositories.module_repo import ModuleUseCases
+from app.schemas import Module as ModuleSchema
 
-router = APIRouter(
-    prefix="/modules",
-    tags=["modules"]
-)
+module_router = APIRouter(prefix="/modules")
 
-@router.get("/", response_model=List[ModuleResponse])
+@module_router.get("/")
 def list_modules(db: Session = Depends(get_db_session)):
-    return ModuleRepository.list_all(db)
+    return ModuleUseCases.list_all(db)
 
-@router.post("/", response_model=ModuleResponse)
-def create_module(module: ModuleCreate, db: Session = Depends(get_db_session)):
-    return ModuleRepository.create(db, module)
+@module_router.post("/")
+def create_module(module: ModuleSchema, db: Session = Depends(get_db_session)):
+    return ModuleUseCases.create(db, module)
 
-@router.put("/{module_id}", response_model=ModuleResponse)
-def update_module(module_id: int, data: ModuleUpdate, db: Session = Depends(get_db_session)):
-    return ModuleRepository.update(db, module_id, data)
+@module_router.put("/{module_id}")
+def update_module(module_id: int, data: ModuleSchema, db: Session = Depends(get_db_session)):
+    return ModuleUseCases.update(db, module_id, data)
 
-@router.delete("/{module_id}")
+@module_router.delete("/{module_id}")
 def delete_module(module_id: int, db: Session = Depends(get_db_session)):
-    return ModuleRepository.delete(db, module_id)
+    return ModuleUseCases.delete(db, module_id)
 
 
 

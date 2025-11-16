@@ -1,19 +1,18 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from ..models.models import Lesson
-from ..schemas.Lesson import LessonCreate, LessonUpdate
+from ..models import Lesson as LessonModel
+from ..schemas import Lesson as LessonSchema
 
 
-class LessonRepository:
+class LessonUseCases:
 
     @staticmethod
     def list_all(db: Session):
-        return db.query(Lesson).all()
-
+        return db.query(LessonModel).all()
     @staticmethod
-    def create(db: Session, data: LessonCreate):
-        lesson = Lesson(
+    def create(db: Session, data: LessonSchema):
+        lesson = LessonModel(
             content_type=data.content_type,
             done=data.done,
             module_id=data.module_id
@@ -24,8 +23,8 @@ class LessonRepository:
         return lesson
 
     @staticmethod
-    def update(db: Session, lesson_id: int, data: LessonUpdate):
-        lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    def update(db: Session, lesson_id: int, data: LessonSchema):
+        lesson = db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
 
         if not lesson:
             raise HTTPException(status_code=404, detail="Lesson not found")
@@ -40,7 +39,7 @@ class LessonRepository:
 
     @staticmethod
     def delete(db: Session, lesson_id: int):
-        lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+        lesson = db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
 
         if not lesson:
             raise HTTPException(status_code=404, detail="Lesson not found")

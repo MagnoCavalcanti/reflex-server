@@ -1,19 +1,19 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from ..models.models import Module, Course
-from ..schemas.Module import ModuleCreate, ModuleUpdate
+from ..models import Module as ModuleModel
+from ..schemas import Module as ModuleSchema
 
 
-class ModuleRepository:
+class ModuleUseCases:
 
     @staticmethod
     def list_all(db: Session):
-        return db.query(Module).all()
+        return db.query(ModuleModel).all()
 
     @staticmethod
-    def create(db: Session, data: ModuleCreate):
-        module = Module(
+    def create(db: Session, data: ModuleSchema):
+        module = ModuleModel(
             title=data.title,
             course_id=data.course_id
         )
@@ -23,8 +23,8 @@ class ModuleRepository:
         return module
 
     @staticmethod
-    def update(db: Session, module_id: int, data: ModuleUpdate):
-        module = db.query(Module).filter(Module.id == module_id).first()
+    def update(db: Session, module_id: int, data: ModuleSchema):
+        module = db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
 
         if not module:
             raise HTTPException(status_code=404, detail="Module not found")
@@ -38,7 +38,7 @@ class ModuleRepository:
 
     @staticmethod
     def delete(db: Session, module_id: int):
-        module = db.query(Module).filter(Module.id == module_id).first()
+        module = db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
 
         if not module:
             raise HTTPException(status_code=404, detail="Module not found")

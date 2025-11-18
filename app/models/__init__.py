@@ -1,1 +1,1 @@
-from .models import Base, User, Course, Module, CourseEnrollment, Lesson
+from .models import Base, User, Course, Module, CourseEnrollment, Lesson, LessonVideo, LessonQuiz, QuizQuestion, QuizOption

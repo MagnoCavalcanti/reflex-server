@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.utils.dependencies import get_db_session, get_current_user
-from app.repositories.lesson_repo import LessonUseCases
+from app.repositories import LessonUseCases, UserUseCases
 from app.schemas import Lesson as LessonSchema, LessonVideo as LessonVideoSchema, LessonQuiz as LessonQuizSchema
 
 lesson_router = APIRouter(prefix="/lessons")
@@ -36,6 +36,19 @@ def get_lesson(lesson_id: int, db: Session = Depends(get_db_session)):
     lesson = lesson_uc.get_by_id(lesson_id)
     return JSONResponse(
         content=lesson,
+        status_code=status.HTTP_200_OK
+    )
+
+@lesson_router.post("/{lesson_id}")
+def complete_lesson(
+    lesson_id: int,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    user_uc.complete_lesson(current_user["sub"], lesson_id)
+    return JSONResponse(
+        content={ "msg": "success" },
         status_code=status.HTTP_200_OK
     )
 

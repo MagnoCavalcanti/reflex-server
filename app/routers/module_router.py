@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 
 from app.utils import get_db_session, get_current_user
-from app.repositories.module_repo import ModuleUseCases
+from app.repositories import ModuleUseCases, UserUseCases
 from app.schemas import Module as ModuleSchema
 
 module_router = APIRouter(prefix="/modules")
@@ -41,7 +41,15 @@ def get_module(module_id: int, db: Session = Depends(get_db_session)):
         status_code=status.HTTP_200_OK
     )
 
-
-
-
-
+@module_router.post("/{module_id}")
+def complete_module(
+    module_id: int,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    user_uc.complete_module(current_user["sub"], module_id)
+    return JSONResponse(
+        content={ "msg": "success" },
+        status_code=status.HTTP_200_OK
+    )

@@ -45,7 +45,6 @@ class Lesson(Base):
     id = Column('id', Integer, autoincrement=True, primary_key=True)
     title = Column('title', String, nullable=False)
     content_type = Column('content_type', String)
-    done = Column('done', Boolean, default=False)
     module_id = Column('module_id', Integer, ForeignKey('modules.id'))
 
     __table_args__ = (
@@ -75,3 +74,34 @@ class QuizOption(Base):
     question_id = Column('question_id', Integer, ForeignKey('quiz_questions.id'))
     option_text = Column('option_text', Text, nullable=False)
     is_correct = Column('is_correct', Boolean, default=False)
+
+class ModuleCompletion(Base):
+    __tablename__ = 'module_completions'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    user_id = Column('user_id', Integer, ForeignKey('users.id'))
+    module_id = Column('module_id', Integer, ForeignKey('modules.id'))
+    completion_date = Column('completion_date', Date)
+
+class LessonCompletion(Base):
+    __tablename__ = 'lesson_completions'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    user_id = Column('user_id', Integer, ForeignKey('users.id'))
+    lesson_id = Column('lesson_id', Integer, ForeignKey('lessons.id'))
+    completion_date = Column('completion_date', Date)
+
+class QuizAttempt(Base):
+    __tablename__ = 'quiz_attempts'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    user_id = Column('user_id', Integer, ForeignKey('users.id'))
+    quiz_id = Column('quiz_id', Integer, ForeignKey('lesson_quizzes.id'))
+    attempt_date = Column('attempt_date', Date)
+    score = Column('score', Integer)
+
+class QuizAnswer(Base):
+    __tablename__ = 'quiz_answers'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    attempt_id = Column('attempt_id', Integer, ForeignKey('quiz_attempts.id'))
+    question_id = Column('question_id', Integer, ForeignKey('quiz_questions.id'))
+    selected_option_id = Column('selected_option_id', Integer, ForeignKey('quiz_options.id'))
+    is_correct = Column('is_correct', Boolean, default=False)
+

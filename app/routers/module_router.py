@@ -32,6 +32,15 @@ def create_module(
         status_code=status.HTTP_201_CREATED
     )
 
+@module_router.get("/{module_id}")
+def get_module(module_id: int, db: Session = Depends(get_db_session)):
+    module_uc = ModuleUseCases(db)
+    module = module_uc.get_by_id(module_id)
+    return JSONResponse(
+        content=jsonable_encoder(module),
+        status_code=status.HTTP_200_OK
+    )
+
 
 
 

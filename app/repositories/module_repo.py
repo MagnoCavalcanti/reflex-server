@@ -12,6 +12,14 @@ class ModuleUseCases:
 
     def list_all(self):
         return self.db.query(ModuleModel).all()
+    
+    def get_by_id(self, module_id: int):
+            module = self.db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
+            if not module:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
+            return module
+    
+    
 
     def create(self, data: ModuleSchema, username: int):
         try:

@@ -13,8 +13,8 @@ class User(Base):
     type_user = Column('type_user', String, default=TipoUsuario.aluno, nullable=False)
     
     __table_args__ = (
-        CheckConstraint("email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'", name='check_email_format'),
-        CheckConstraint("telephone ~ '^\\(\\d{2}\\)\\s?\\d{5}-\\d{4}$'", name='check_telephone_format'),
+        CheckConstraint(r"email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'", name='check_email_format'),
+        CheckConstraint(r"telephone ~ '^\(\d{2}\)\s?\d{5}-\d{4}$'", name='check_telephone_format'),
         CheckConstraint("LENGTH(password) >= 8", name='check_password_length'),
         CheckConstraint("type_user IN ('A', 'P')", name='chk_type_user_values'),
     )

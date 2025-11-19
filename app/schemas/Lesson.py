@@ -38,7 +38,6 @@ class Lesson(BaseModel):
     
     title: str
     content_type: str
-    done: bool = False
     module_id: int
 
     @field_validator('content_type')

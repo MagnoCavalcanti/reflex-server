@@ -1,114 +1,361 @@
-# 🏗️ Documentação do Backend — Plataforma de Ensino de Tecnologia
-## 📘 Introdução
+# 🎓 Reflex Server - Backend da Plataforma de Cursos
 
-Este documento descreve a arquitetura do backend da plataforma de ensino gratuita voltada à área de tecnologia.
-O objetivo do sistema é democratizar o ensino de tecnologia e oferecer uma ferramenta de apoio para escolas, permitindo que professores cadastrem cursos gratuitamente e que alunos possam acessá-los de forma simples.
+## 📘 Sobre o Projeto
 
-O backend foi projetado com foco em organização, clareza e baixo custo operacional, adequando-se ao contexto de um projeto de extensão universitária e à entrega de um MVP funcional até novembro.
+O **Reflex Server** é o backend de uma plataforma de ensino desenvolvida como projeto de extensão universitária. O sistema tem como objetivo **democratizar o acesso à educação em tecnologia**, permitindo que professores criem e gerenciem cursos gratuitamente, enquanto alunos podem se matricular e acompanhar seu progresso de aprendizado.
 
-Esta documentação serve tanto como guia técnico quanto como material de aprendizado para todos os integrantes da equipe.
+Este projeto foi desenvolvido utilizando **Python** e **FastAPI**, seguindo princípios de **Clean Architecture** e boas práticas de desenvolvimento, visando criar um sistema robusto, escalável e de fácil manutenção.
 
-## 🎯 Objetivos do Backend
+### 🎯 Objetivos
 
-Disponibilizar uma API REST organizada, escalável e de fácil manutenção.
+- ✅ Fornecer uma API REST completa e documentada
+- ✅ Gerenciar autenticação segura de usuários (professores e alunos)
+- ✅ Permitir criação e organização de cursos em módulos e aulas
+- ✅ Suportar diferentes tipos de conteúdo (vídeos e quizzes interativos)
+- ✅ Acompanhar progresso dos alunos
+- ✅ Ser econômico e fácil de implantar
 
-Permitir autenticação de usuários (alunos e professores).
+### 🏆 Contexto Acadêmico
 
-Suportar criação e gerenciamento de cursos e quizzes.
+Projeto desenvolvido para a disciplina de **Extensão P3** do curso de **Análise e Desenvolvimento de Sistemas** na **UNIFIP**, com entrega prevista para **novembro de 2025**.
 
-Oferecer endpoints para o player de vídeo.
+## 🚀 Funcionalidades Principais
 
-Garantir segurança básica e tratamento consistente de erros.
+### 👤 Gestão de Usuários
+- Cadastro de alunos e professores
+- Autenticação segura com JWT
+- Diferenciação de permissões por tipo de usuário
 
-Ser simples o suficiente para implantação em servidores de baixo custo.
+### 📚 Gestão de Cursos
+- Criação de cursos por professores
+- Organização em módulos hierárquicos
+- Aulas com conteúdo variado (vídeos e quizzes)
+- Sistema de matrículas
 
-## 🗂️ Estrutura de Pastas e Arquivos
+### 📝 Sistema de Avaliação
+- Quizzes interativos com múltipla escolha
+- Validação automática de respostas
+- Cálculo de notas em porcentagem
+- Prevenção de respostas duplicadas
 
-Abaixo está o modelo de organização do projeto (exemplo para FastAPI):
+### 📊 Acompanhamento de Progresso
+- Marcação de aulas concluídas
+- Marcação de módulos concluídos
+- Histórico de tentativas em quizzes
+- Dashboard de progresso do aluno
+
+## 🛠️ Tecnologias Utilizadas
+
+### Core
+- **Python 3.12** - Linguagem de programação
+- **FastAPI** - Framework web moderno e de alta performance
+- **Pydantic** - Validação de dados e serialização
+- **SQLAlchemy** - ORM para banco de dados
+- **PostgreSQL** - Banco de dados relacional
+
+### Segurança
+- **JWT (JSON Web Tokens)** - Autenticação stateless
+- **Passlib** - Hash seguro de senhas (bcrypt)
+- **Python-JOSE** - Geração e validação de tokens
+
+### DevOps
+- **Docker** - Containerização
+- **Docker Compose** - Orquestração de containers
+- **Alembic** - Migrations de banco de dados
+- **Uvicorn** - Servidor ASGI de produção
+
+## 🏗️ Arquitetura do Projeto
+
+O projeto segue uma **arquitetura em camadas** inspirada em **Clean Architecture** e **DDD (Domain-Driven Design)**:
+
 ```
-backend/
+reflex-server/
 │
 ├── app/
-│   ├── main.py                     # Ponto de entrada da aplicação
-│   ├── core/                       # Configurações e infraestrutura 
+│   ├── main.py                     # Ponto de entrada da aplicação FastAPI
 │   │
-│   ├── models/                     # Modelos do banco (SQLAlchemy)
+│   ├── core/                       # 🔧 Configurações centrais
+│   │   ├── db_connection.py        # Conexão com PostgreSQL
+│   │   └── __init__.py
 │   │
-│   ├── schemas/                    # Validação e contratos da API (Pydantic)
+│   ├── models/                     # 🗄️ Modelos do banco de dados (SQLAlchemy ORM)
+│   │   ├── base.py                 # Classe Base declarativa
+│   │   ├── models.py               # User, Course, Module, Lesson, Quiz, etc.
+│   │   └── enum.py                 # Enums (TipoUsuario)
 │   │
-│   ├── repositories/               # Acesso a dados (CRUD)
+│   ├── schemas/                    # 📋 Validação de dados (Pydantic)
+│   │   ├── User.py                 # Schema de usuário
+│   │   ├── Course.py               # Schema de curso
+│   │   ├── Module.py               # Schema de módulo
+│   │   ├── Lesson.py               # Schema de aula (vídeo e quiz)
+│   │   └── __init__.py
 │   │
-│   ├── services/                   # Regras de negócio
+│   ├── repositories/               # 💼 Lógica de negócio (Use Cases)
+│   │   ├── auth_repo.py            # Autenticação (login, register)
+│   │   ├── course_repo.py          # Gestão de cursos
+│   │   ├── module_repo.py          # Gestão de módulos
+│   │   ├── lesson_repo.py          # Gestão de aulas e quizzes
+│   │   ├── user_repo.py            # Operações de usuário
+│   │   └── __init__.py
 │   │
-│   ├── routers/                    # Endpoints da API
+│   ├── routers/                    # 🛣️ Endpoints da API (Controllers)
+│   │   ├── auth_router.py          # POST /auth/register, /auth/login
+│   │   ├── course_router.py        # GET/POST /courses
+│   │   ├── module_router.py        # GET/POST /modules
+│   │   ├── lesson_router.py        # GET/POST /lessons, /lessons/quiz
+│   │   └── __init__.py
 │   │
-│   ├── tests/                      # Testes unitários e de integração
-│   │
-│   └── utils/                      # Funções auxiliares
+│   └── utils/                      # 🔨 Utilitários e helpers
+│       ├── dependencies.py         # Injeção de dependências (DB, Auth)
+│       └── __init__.py
 │
-├── requirements.txt                # Dependências do projeto
-├── .env.example                    # Modelo de variáveis de ambiente
-├── README_BACKEND.md               # Este documento
-└── Dockerfile                      # (Opcional) Configuração de container
+├── migrations/                     # 📦 Migrations do Alembic
+│   ├── versions/                   # Histórico de alterações no banco
+│   └── env.py                      # Configuração do Alembic
+│
+├── .env                            # 🔐 Variáveis de ambiente (não commitado)
+├── .dockerignore                   # Arquivos ignorados no build Docker
+├── alembic.ini                     # Configuração do Alembic
+├── docker-compose.yml              # Orquestração de containers
+├── Dockerfile                      # Imagem Docker da aplicação
+├── entrypoint.sh                   # Script de inicialização do container
+├── requirements.txt                # Dependências Python
+├── API_DOCUMENTATION.md            # 📖 Documentação completa da API
+└── README.md                       # Este arquivo
 ```
 
-## 🔐 Autenticação e Segurança
+### 📐 Camadas da Arquitetura
 
-    Autenticação via JWT (JSON Web Token)
+```
+┌─────────────────────────────────────────┐
+│      Routers (Camada de Apresentação)   │  ← HTTP Endpoints
+├─────────────────────────────────────────┤
+│   Repositories (Camada de Aplicação)    │  ← Lógica de Negócio
+├─────────────────────────────────────────┤
+│  Models + Schemas (Camada de Domínio)   │  ← Entidades e Regras
+├─────────────────────────────────────────┤
+│  Core + Utils (Camada de Infraestrutura)│  ← DB, Config, Helpers
+└─────────────────────────────────────────┘
+```
 
-    Alunos e professores autenticam-se com e-mail e senha.
+## 🔐 Segurança e Autenticação
 
-    Tokens são gerados e verificados em core/security.py.
+### Autenticação JWT
+- **Tokens de acesso** com validade de 30 minutos
+- **Bearer token** no header Authorization
+- Geração de tokens no login com payload customizado
 
-    Rotas protegidas usam Depends(get_current_user).
+### Validações Robustas
+- **Senhas**: Mínimo 8 caracteres, 1 maiúscula, 1 minúscula, 1 número
+- **Email**: Validação de formato com regex
+- **Telefone**: Formato brasileiro (XX) XXXXX-XXXX
+- **Quizzes**: Exatamente uma resposta correta por pergunta
 
-    Boas práticas adotadas:
+### Controle de Acesso
+- **Professores**: Podem criar/editar apenas seus próprios cursos
+- **Alunos**: Podem matricular-se e responder quizzes
+- **Rotas protegidas**: Middleware `get_current_user` valida tokens
+- **Prevenção de duplicação**: Matrícula, conclusão de aulas, respostas de quiz
 
-    Senhas armazenadas com hash (bcrypt).
+### Boas Práticas
+- ✅ Senhas hasheadas com bcrypt (SHA-256)
+- ✅ Variáveis sensíveis no `.env`
+- ✅ CORS configurado para permitir frontend
+- ✅ Tratamento centralizado de exceções
+- ✅ Validação em múltiplas camadas (Pydantic + SQLAlchemy)
 
-    Variáveis sensíveis no .env (ex: SECRET_KEY, DATABASE_URL).
 
-    Middleware de CORS para permitir o frontend React.
+## 🚦 Como Executar o Projeto
 
-    Tratamento centralizado de exceções no exceptions.py.
+### 📋 Pré-requisitos
 
+- Python 3.12+
+- PostgreSQL 17
+- Docker e Docker Compose (opcional, mas recomendado)
+- Git
 
-## 🌱 Como Contribuir com o Projeto
-1. Crie um ambiente virtual
+### 🐳 Opção 1: Docker (Recomendado)
+
+1. **Clone o repositório**
 ```bash
+git clone https://github.com/MagnoCavalcanti/reflex-server.git
+cd reflex-server
+```
+
+2. **Configure as variáveis de ambiente**
+```bash
+# Já existe um .env configurado, mas você pode ajustar conforme necessário
+```
+
+3. **Suba os containers**
+```bash
+docker-compose up --build
+```
+
+4. **Acesse a aplicação**
+- API: http://localhost:8000
+- Documentação interativa: http://localhost:8000/docs
+- Banco de dados: localhost:5431
+
+### 💻 Opção 2: Ambiente Local
+
+1. **Clone e entre no diretório**
+```bash
+git clone https://github.com/MagnoCavalcanti/reflex-server.git
+cd reflex-server
+```
+
+2. **Crie e ative ambiente virtual**
+```bash
+# Windows
 python -m venv venv
-```
-```bash
-venv/Scripts/activate
+venv\Scripts\activate
+
+# Linux/Mac
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-2. Instale as dependências
-```
+3. **Instale as dependências**
+```bash
 pip install -r requirements.txt
 ```
 
-3. Configure o ambiente
+4. **Configure o .env**
+```env
+DB_URL=postgresql://postgres:1407@localhost:5432/reflex_db
+SECRET_KEY=sua_chave_secreta_aqui
+ALGORITHM=HS256
+```
 
-    - Crie um arquivo ```.env``` a partir do modelo:
+5. **Execute as migrations**
+```bash
+alembic upgrade head
+```
+
+6. **Rode o servidor**
+```bash
+uvicorn app.main:app --reload
+```
+
+7. **Acesse a documentação**
+```
+http://localhost:8000/docs
+```
+
+## 📖 Documentação da API
+
+A documentação completa de todos os endpoints está disponível em:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **Arquivo Markdown**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+
+### Principais Endpoints
+
+| Método | Endpoint | Descrição | Auth |
+|--------|----------|-----------|------|
+| POST | `/auth/register` | Cadastro de usuário | ❌ |
+| POST | `/auth/login` | Login e geração de token | ❌ |
+| GET | `/courses/` | Lista todos os cursos | ❌ |
+| POST | `/courses/` | Cria novo curso | ❌ |
+| POST | `/courses/enrollments` | Matricula em um curso | ✅ |
+| GET | `/modules/` | Lista todos os módulos | ❌ |
+| POST | `/modules/` | Cria módulo (professor) | ✅ |
+| POST | `/modules/{id}` | Completa módulo | ✅ |
+| GET | `/lessons/` | Lista todas as aulas | ❌ |
+| POST | `/lessons/` | Cria aula (professor) | ✅ |
+| POST | `/lessons/create/video` | Adiciona vídeo à aula | ✅ |
+| POST | `/lessons/create/quiz` | Cria quiz | ✅ |
+| POST | `/lessons/quiz/answer` | Responde quiz | ✅ |
+
+## 🧪 Testes
+
+### Testando com Swagger
+```
+1. Acesse http://localhost:8000/docs
+2. Clique em "Authorize" e cole o token JWT
+3. Teste os endpoints diretamente na interface
+```
+
+### Exemplos com cURL
+
+**Registrar usuário:**
+```bash
+curl -X POST "http://localhost:8000/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "maria",
+    "password": "Maria123",
+    "email": "maria@example.com",
+    "fullname": "Maria Santos",
+    "telephone": "(11) 98765-4321",
+    "type_user": "A"
+  }'
+```
+
+**Login:**
+```bash
+curl -X POST "http://localhost:8000/auth/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=maria&password=Maria123"
+```
+
+## 🤝 Como Contribuir
+
+### Padrões de Branch
+- `feature/nome-funcionalidade` - Novas funcionalidades
+- `fix/descricao-do-bug` - Correções de bugs
+- `docs/atualizacao` - Atualizações de documentação
+- `refactor/melhoria` - Refatorações de código
+
+### Padrões de Commit
+Seguimos o [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+feat: adicionar endpoint de criação de curso
+fix: corrigir validação do email do usuário
+docs: atualizar README com instruções Docker
+refactor: reorganizar estrutura de pastas
+test: adicionar testes para auth_router
+```
+
+### Fluxo de Trabalho
+1. Crie uma branch a partir da `main`
+2. Desenvolva e commit suas alterações
+3. Teste localmente
+4. Abra um Pull Request
+5. Aguarde code review
+
+## 📊 Modelo de Dados
+
+### Principais Entidades
+
+```mermaid
+erDiagram
+    USER ||--o{ COURSE : creates
+    USER ||--o{ COURSE_ENROLLMENT : enrolls
+    COURSE ||--o{ MODULE : contains
+    MODULE ||--o{ LESSON : contains
+    LESSON ||--o{ LESSON_VIDEO : has
+    LESSON ||--o{ LESSON_QUIZ : has
+    LESSON_QUIZ ||--o{ QUIZ_QUESTION : has
+    QUIZ_QUESTION ||--o{ QUIZ_OPTION : has
+```
+
+## 👥 Equipe
+
+**Desenvolvedor Principal**: [Seu Nome]  
+**Orientador**: [Nome do Orientador]  
+**Universidade**: [Nome da Universidade]  
+**Curso**: [Seu Curso]  
+**Período**: 2025.2
+
+## 📝 Licença
+
+Este projeto é desenvolvido para fins acadêmicos como parte do projeto de extensão universitária.
 
 
+---
 
-4. Rode o servidor local
-
-    ```
-    uvicorn app.main:app --reload
-    ```
-
-5. Acesse a documentação interativa
-    http://localhost:8000/docs
-
-6. Padrões de código e commits
-
-    - Nome de branch: ```feature/nome-funcionalidade``` ou ```fix/descricao-breve```
-
-    - Commits curtos e descritivos:
-
-        ```vbnet
-        feat: adicionar endpoint de criação de curso
-        fix: corrigir validação do email do usuário
-        ```
+**Desenvolvido com ❤️ para democratizar o ensino de tecnologia**

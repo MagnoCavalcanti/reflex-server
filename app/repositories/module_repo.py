@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-from ..models import Module as ModuleModel, User as UserModel, Course as CourseModel
+from ..models import Module as ModuleModel, User as UserModel, Course as CourseModel, Lesson as LessonModel
 from ..schemas import Module as ModuleSchema
 
 
@@ -12,6 +12,38 @@ class ModuleUseCases:
 
     def list_all(self):
         return self.db.query(ModuleModel).all()
+
+    def list_by_course_id(self, course_id: int):
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Curso não encontrado"
+            )
+
+        modules = self.db.query(ModuleModel).filter(ModuleModel.course_id == course_id).all()
+        if not modules:
+            return []
+
+        payload = []
+        for module in modules:
+            lessons = self.db.query(LessonModel).filter(LessonModel.module_id == module.id).all()
+            payload.append(
+                {
+                    "id": module.id,
+                    "title": module.title,
+                    "course_id": module.course_id,
+                    "lessons": [
+                        {
+                            "id": lesson.id,
+                            "title": lesson.title,
+                            "content_type": lesson.content_type
+                        }
+                        for lesson in lessons
+                    ]
+                }
+            )
+        return payload
     
     def get_by_id(self, module_id: int):
             module = self.db.query(ModuleModel).filter(ModuleModel.id == module_id).first()

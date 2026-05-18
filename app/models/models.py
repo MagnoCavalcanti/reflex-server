@@ -1,5 +1,6 @@
 from .base import Base
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Date, CheckConstraint, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Date, CheckConstraint, Boolean, DateTime
+from datetime import datetime, timezone
 
 from .enum import TipoUsuario
 class User(Base):
@@ -24,7 +25,11 @@ class Course(Base):
     id = Column('id', Integer, autoincrement=True, primary_key=True)
     title = Column('title', String, nullable=False, unique=True)
     description = Column('description', Text)
+    area = Column('area', String)
+    level = Column('level', String)
     professor_id = Column('professor_id', Integer, ForeignKey('users.id'))
+    created_at = Column('created_at', DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column('updated_at', DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Module(Base):
@@ -104,4 +109,14 @@ class QuizAnswer(Base):
     question_id = Column('question_id', Integer, ForeignKey('quiz_questions.id'))
     selected_option_id = Column('selected_option_id', Integer, ForeignKey('quiz_options.id'))
     is_correct = Column('is_correct', Boolean, default=False)
+
+
+class RefreshToken(Base):
+    __tablename__ = 'refresh_tokens'
+    id = Column('id', Integer, autoincrement=True, primary_key=True)
+    user_id = Column('user_id', Integer, ForeignKey('users.id'), nullable=False)
+    token = Column('token', Text, nullable=False, unique=True)
+    expires_at = Column('expires_at', DateTime(timezone=True), nullable=False)
+    revoked = Column('revoked', Boolean, default=False, nullable=False)
+    created_at = Column('created_at', DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 

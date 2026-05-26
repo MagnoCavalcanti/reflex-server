@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia apenas arquivos necessários
 COPY app/ ./app/
-COPY .env .env
 COPY migrations ./migrations
 COPY entrypoint.sh entrypoint.sh
 COPY alembic.ini alembic.ini

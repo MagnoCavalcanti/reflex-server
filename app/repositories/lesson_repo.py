@@ -58,7 +58,20 @@ class LessonUseCases:
         lesson = self.db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
         if not lesson:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")
-        return lesson
+        lesson_video = (
+            self.db.query(LessonVideoModel)
+            .filter(LessonVideoModel.lesson_id == lesson.id)
+            .order_by(LessonVideoModel.id.desc())
+            .first()
+        )
+
+        return {
+            "id": lesson.id,
+            "title": lesson.title,
+            "content_type": lesson.content_type,
+            "module_id": lesson.module_id,
+            "video_url": lesson_video.video_url if lesson_video else None,
+        }
     
     def create_video(self, data: LessonVideoSchema, username: str):
         self._require_course_owner_from_lesson(data.lesson_id, username)

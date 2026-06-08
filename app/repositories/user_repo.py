@@ -15,6 +15,17 @@ class UserUseCases:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não existe")
         return user_id
 
+    def ensure_professor(self, username: str):
+        user = self.db.query(UserModel).filter(UserModel.username == username).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não existe")
+        if user.type_user != "P":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso permitido apenas para professores"
+            )
+        return user
+
     def enroll(self, username: str, course_id: int):
         # 1. Buscar usuário completo
         user_id = self.user_id_by_username(username)

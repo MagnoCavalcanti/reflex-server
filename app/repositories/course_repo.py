@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 
-from ..models import Course as CourseModel, User as UserModel, Module as ModuleModel, Lesson as LessonModel
+from ..models import Course as CourseModel, User as UserModel, Module as ModuleModel, Lesson as LessonModel, CourseEnrollment as CourseEnrollmentModel
 from ..schemas import Course as CourseSchema
 
 class CoursesUseCases:
@@ -187,3 +187,51 @@ class CoursesUseCases:
                 detail="Erro ao atualizar o curso.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def get_professor_course_enrollment_metrics(self, professor_id: int):
+        professor = self.db.query(UserModel).filter(
+            UserModel.id == professor_id,
+            UserModel.type_user == "P"
+        ).first()
+        if not professor:
+            raise HTTPException(
+                detail="Professor não encontrado ou inválido.",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        courses = self.db.query(CourseModel).filter(CourseModel.professor_id == professor_id).all()
+        if not courses:
+            return {
+                "professor_id": professor_id,
+                "courses_total": 0,
+                "total_enrollments": 0,
+                "courses_by_enrollments": []
+            }
+
+        course_ids = [course.id for course in courses]
+        enrollments = self.db.query(CourseEnrollmentModel).filter(
+            CourseEnrollmentModel.course_id.in_(course_ids)
+        ).all()
+
+        enrollments_by_course: dict[int, int] = {course_id: 0 for course_id in course_ids}
+        for enrollment in enrollments:
+            enrollments_by_course[enrollment.course_id] = enrollments_by_course.get(enrollment.course_id, 0) + 1
+
+        courses_by_enrollments = sorted(
+            [
+                {
+                    "course_id": course.id,
+                    "title": course.title,
+                    "enrollments": enrollments_by_course.get(course.id, 0)
+                }
+                for course in courses
+            ],
+            key=lambda item: (-item["enrollments"], item["title"].lower())
+        )
+
+        return {
+            "professor_id": professor_id,
+            "courses_total": len(courses),
+            "total_enrollments": len(enrollments),
+            "courses_by_enrollments": courses_by_enrollments
+        }

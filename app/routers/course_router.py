@@ -119,3 +119,17 @@ def list_course_students(
         content=jsonable_encoder(students),
         status_code=status.HTTP_200_OK
     )
+
+@course_router.get("/professor/me/enrollments")
+def get_professor_enrollment_metrics(
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    professor = user_uc.ensure_professor(current_user["sub"])
+    course_uc = CoursesUseCases(db)
+    metrics = course_uc.get_professor_course_enrollment_metrics(professor.id)
+    return JSONResponse(
+        content=jsonable_encoder(metrics),
+        status_code=status.HTTP_200_OK
+    )

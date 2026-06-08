@@ -21,7 +21,12 @@ class ModuleUseCases:
                 detail="Curso não encontrado"
             )
 
-        modules = self.db.query(ModuleModel).filter(ModuleModel.course_id == course_id).all()
+        modules = (
+            self.db.query(ModuleModel)
+            .filter(ModuleModel.course_id == course_id)
+            .order_by(ModuleModel.order_index.asc(), ModuleModel.id.asc())
+            .all()
+        )
         if not modules:
             return []
 
@@ -33,6 +38,7 @@ class ModuleUseCases:
                     "id": module.id,
                     "title": module.title,
                     "course_id": module.course_id,
+                    "order_index": module.order_index,
                     "lessons": [
                         {
                             "id": lesson.id,
@@ -50,27 +56,37 @@ class ModuleUseCases:
             if not module:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
             return module
-    
-    
 
-    def create(self, data: ModuleSchema, username: int):
+    def _require_course_owner(self, course_id: int, username: str):
+        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
+        if course.professor_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas o professor do curso pode criar módulos"
+            )
+        return course
+
+    def create(self, data: ModuleSchema, username: str):
         try:
-
-            user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
-            
-            # Verificar se o curso existe
-            course = self.db.query(CourseModel).filter(CourseModel.id == data.course_id).first()
-            if not course:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-            
-            # Verificar se o usuário é o professor do curso
-            if course.professor_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Apenas o professor do curso pode criar módulos"
+            self._require_course_owner(data.course_id, username)
+            next_order = data.order_index
+            if next_order is None:
+                max_order = (
+                    self.db.query(ModuleModel.order_index)
+                    .filter(ModuleModel.course_id == data.course_id)
+                    .order_by(ModuleModel.order_index.desc())
+                    .scalar()
                 )
-            
-            module = ModuleModel(**data.__dict__)
+                next_order = (max_order + 1) if max_order is not None else 1
+
+            module = ModuleModel(
+                title=data.title,
+                course_id=data.course_id,
+                order_index=next_order
+            )
             self.db.add(module)
             self.db.commit()
             self.db.refresh(module)

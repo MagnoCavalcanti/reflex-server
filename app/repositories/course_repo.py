@@ -19,6 +19,8 @@ class CoursesUseCases:
             "description": course.description,
             "area": course.area,
             "level": course.level,
+            "cover_image_url": course.cover_image_url,
+            "status": course.status,
             "professor_id": course.professor_id,
             "professor_name": professor.fullname if professor else None,
             "created_at": course.created_at.isoformat() if course.created_at else None,
@@ -28,7 +30,12 @@ class CoursesUseCases:
         if not include_modules:
             return payload
 
-        modules = self.db.query(ModuleModel).filter(ModuleModel.course_id == course.id).all()
+        modules = (
+            self.db.query(ModuleModel)
+            .filter(ModuleModel.course_id == course.id)
+            .order_by(ModuleModel.order_index.asc(), ModuleModel.id.asc())
+            .all()
+        )
         modules_payload = []
         for module in modules:
             lessons = self.db.query(LessonModel).filter(LessonModel.module_id == module.id).all()
@@ -36,6 +43,7 @@ class CoursesUseCases:
                 {
                     "id": module.id,
                     "title": module.title,
+                    "order_index": module.order_index,
                     "lessons": [
                         {
                             "id": lesson.id,
@@ -75,6 +83,8 @@ class CoursesUseCases:
 
         if level:
             query = query.filter(CourseModel.level.ilike(level.strip()))
+
+        query = query.order_by(CourseModel.created_at.desc())
 
         total = query.count()
 
@@ -139,3 +149,41 @@ class CoursesUseCases:
         except Exception as e:
             self.db.rollback()
             raise HTTPException(detail="Erro ao criar o curso.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update_course(self, course_id: int, course_data: CourseSchema):
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(
+                detail="Curso não encontrado",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        professor = self.db.query(UserModel).filter(
+            UserModel.id == course_data.professor_id,
+            UserModel.type_user == "P"
+        ).first()
+        if not professor:
+            raise HTTPException(
+                detail="Professor não encontrado ou inválido.",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        course.title = course_data.title
+        course.description = course_data.description
+        course.area = course_data.area
+        course.level = course_data.level
+        course.cover_image_url = course_data.cover_image_url
+        course.status = course_data.status
+        course.professor_id = course_data.professor_id
+
+        try:
+            self.db.add(course)
+            self.db.commit()
+            self.db.refresh(course)
+            return self._serialize_course(course, professor=professor, include_modules=False)
+        except Exception:
+            self.db.rollback()
+            raise HTTPException(
+                detail="Erro ao atualizar o curso.",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

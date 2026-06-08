@@ -13,28 +13,34 @@ class LessonUseCases:
     def list_all(self):
         return self.db.query(LessonModel).all()
 
+    def _require_course_owner_from_module(self, module_id: int, username: str):
+        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
+        module = self.db.query(ModuleModel).filter(ModuleModel.id == module_id).first()
+        if not module:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
+
+        course = self.db.query(CourseModel).filter(CourseModel.id == module.course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
+
+        if course.professor_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas o professor do curso pode criar aulas"
+            )
+        return module, course
+
+    def _require_course_owner_from_lesson(self, lesson_id: int, username: str):
+        lesson = self.db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
+        if not lesson:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")
+
+        module, course = self._require_course_owner_from_module(lesson.module_id, username)
+        return lesson, module, course
+
     def create(self, data: LessonSchema, username: str):
         try:
-            # Buscar o ID do usuário
-            user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
-            
-            # Verificar se o módulo existe
-            module = self.db.query(ModuleModel).filter(ModuleModel.id == data.module_id).first()
-            if not module:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
-            
-            # Verificar se o curso existe
-            course = self.db.query(CourseModel).filter(CourseModel.id == module.course_id).first()
-            if not course:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-            
-            # Verificar se o usuário é o professor do curso
-            if course.professor_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Apenas o professor do curso pode criar aulas"
-                )
-            
+            self._require_course_owner_from_module(data.module_id, username)
             lesson = LessonModel(title=data.title, content_type=data.content_type, module_id=data.module_id)
             self.db.add(lesson)
             self.db.commit()
@@ -55,27 +61,7 @@ class LessonUseCases:
         return lesson
     
     def create_video(self, data: LessonVideoSchema, username: str):
-
-        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
-
-        # Verificar se a aula existe
-        lesson = self.db.query(LessonModel).filter(LessonModel.id == data.lesson_id).first()
-        if not lesson:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")    
-        module = self.db.query(ModuleModel).filter(ModuleModel.id == lesson.module_id).first()
-        if not module:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
-            
-        # Verificar se o curso existe
-        course = self.db.query(CourseModel).filter(CourseModel.id == module.course_id).first()
-        if not course:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-
-        if course.professor_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Apenas o professor do curso pode criar aulas"
-                )
+        self._require_course_owner_from_lesson(data.lesson_id, username)
         
         try:
             lesson_video = LessonVideoModel(lesson_id=data.lesson_id, video_url=data.video_url)
@@ -88,26 +74,7 @@ class LessonUseCases:
         return lesson_video
     
     def create_quiz(self, data: LessonQuizSchema, username: str):
-        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
-
-        # Verificar se a aula existe
-        lesson = self.db.query(LessonModel).filter(LessonModel.id == data.lesson_id).first()
-        if not lesson:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")    
-        module = self.db.query(ModuleModel).filter(ModuleModel.id == lesson.module_id).first()
-        if not module:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
-            
-        # Verificar se o curso existe
-        course = self.db.query(CourseModel).filter(CourseModel.id == module.course_id).first()
-        if not course:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-
-        if course.professor_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Apenas o professor do curso pode criar aulas"
-                )
+        self._require_course_owner_from_lesson(data.lesson_id, username)
         
         try:
             lesson_quiz = LessonQuizModel(lesson_id=data.lesson_id)
@@ -146,29 +113,10 @@ class LessonUseCases:
         return lesson_quiz
 
     def add_question_to_quiz(self, question: QuizQuestionSchema, username: str):
-        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
-
-        # Verificar se a aula existe
         quiz = self.db.query(LessonQuizModel).filter(LessonQuizModel.id == question.quiz_id).first()
         if not quiz:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz não encontrado")
-        lesson = self.db.query(LessonModel).filter(LessonModel.id == quiz.lesson_id).first()
-        if not lesson:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")    
-        module = self.db.query(ModuleModel).filter(ModuleModel.id == lesson.module_id).first()
-        if not module:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Módulo não encontrado")
-            
-        # Verificar se o curso existe
-        course = self.db.query(CourseModel).filter(CourseModel.id == module.course_id).first()
-        if not course:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
-
-        if course.professor_id != user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, 
-                    detail="Apenas o professor do curso pode alterar aulas"
-                )
+        self._require_course_owner_from_lesson(quiz.lesson_id, username)
         
         try:
             # Validar que tenha exatamente uma opção correta

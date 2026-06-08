@@ -27,7 +27,7 @@ def create_lesson(
     lesson_uc = LessonUseCases(db)
     new_lesson = lesson_uc.create(lesson, current_user["sub"])
     return JSONResponse(
-        content={ "msg": "success", "id": new_lesson.id },
+        content=jsonable_encoder(new_lesson),
         status_code=status.HTTP_201_CREATED
     )
 

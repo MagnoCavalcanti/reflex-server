@@ -16,10 +16,9 @@ def create_module(
     current_user: dict = Depends(get_current_user)
 ):
     module_uc = ModuleUseCases(db)
-    print(current_user)
-    module_uc.create(module, current_user["sub"])
+    created_module = module_uc.create(module, current_user["sub"])
     return JSONResponse(
-        content={ "msg": "success" },
+        content=jsonable_encoder(created_module),
         status_code=status.HTTP_201_CREATED
     )
 

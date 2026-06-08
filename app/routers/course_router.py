@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -12,12 +12,48 @@ course_router = APIRouter(prefix="/courses")
 
 
 @course_router.post("/")
-def create_course(course_data: CourseSchema, db: Session = Depends(get_db_session)):
+def create_course(
+    course_data: CourseSchema,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
     course_uc = CoursesUseCases(db)
+    user_uc = UserUseCases(db)
+    current_user_id = user_uc.user_id_by_username(current_user["sub"])
+
+    if course_data.professor_id != current_user_id:
+        raise HTTPException(
+            detail="Você só pode criar cursos para o professor autenticado.",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
     new_course = course_uc.create_course(course_data)
     return JSONResponse(
-        content={"message": "Curso criado com sucesso."},
+        content=jsonable_encoder(new_course),
         status_code=status.HTTP_201_CREATED
+    )
+
+@course_router.put("/{course_id}")
+def update_course(
+    course_id: int,
+    course_data: CourseSchema,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    course_uc = CoursesUseCases(db)
+    user_uc = UserUseCases(db)
+    current_user_id = user_uc.user_id_by_username(current_user["sub"])
+
+    if course_data.professor_id != current_user_id:
+        raise HTTPException(
+            detail="Você só pode atualizar cursos do professor autenticado.",
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
+    updated_course = course_uc.update_course(course_id, course_data)
+    return JSONResponse(
+        content=jsonable_encoder(updated_course),
+        status_code=status.HTTP_200_OK
     )
 
 @course_router.post("/enrollments")

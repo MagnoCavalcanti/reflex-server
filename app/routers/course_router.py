@@ -148,3 +148,15 @@ def get_course_quiz_metrics(
         content=jsonable_encoder(metrics),
         status_code=status.HTTP_200_OK
     )
+
+@course_router.get("/students/me/progress")
+def get_student_progress(
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    progress = user_uc.get_student_course_progress(current_user["sub"])
+    return JSONResponse(
+        content=jsonable_encoder(progress),
+        status_code=status.HTTP_200_OK
+    )

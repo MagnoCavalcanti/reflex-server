@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from datetime import date
 
 from ..models import User as UserModel
-from ..models import CourseEnrollment as EnrollmentModel, Course as CourseModel, ModuleCompletion as ModuleCompletionModel, LessonCompletion as LessonCompletionModel, QuizAnswer as QuizAnswerModel, QuizOption as QuizOptionModel, QuizAttempt as QuizAttemptModel, QuizQuestion as QuizQuestionModel
+from ..models import CourseEnrollment as EnrollmentModel, Course as CourseModel, Module as ModuleModel, Lesson as LessonModel, ModuleCompletion as ModuleCompletionModel, LessonCompletion as LessonCompletionModel, QuizAnswer as QuizAnswerModel, QuizOption as QuizOptionModel, QuizAttempt as QuizAttemptModel, QuizQuestion as QuizQuestionModel
 
 class UserUseCases:
     def __init__(self, db: Session):
@@ -89,6 +89,62 @@ class UserUseCases:
             }
             for enrollment in enrollments
         ]
+
+    def get_student_course_progress(self, username: str):
+        user_id = self.user_id_by_username(username)
+        enrollments = self.db.query(EnrollmentModel).filter(EnrollmentModel.user_id == user_id).all()
+        if not enrollments:
+            return []
+
+        course_ids = [enrollment.course_id for enrollment in enrollments]
+        courses = self.db.query(CourseModel).filter(CourseModel.id.in_(course_ids)).all()
+        course_by_id = {course.id: course for course in courses}
+
+        modules = self.db.query(ModuleModel).filter(ModuleModel.course_id.in_(course_ids)).all()
+        module_ids = [module.id for module in modules]
+        course_id_by_module_id = {module.id: module.course_id for module in modules}
+
+        lessons = self.db.query(LessonModel).filter(LessonModel.module_id.in_(module_ids)).all() if module_ids else []
+        lessons_by_course_id: dict[int, list[int]] = {}
+        for lesson in lessons:
+            course_id = course_id_by_module_id.get(lesson.module_id)
+            if course_id is None:
+                continue
+            lessons_by_course_id.setdefault(course_id, []).append(lesson.id)
+
+        all_lesson_ids = [lesson.id for lesson in lessons]
+        completed_lessons = (
+            self.db.query(LessonCompletionModel)
+            .filter(
+                LessonCompletionModel.user_id == user_id,
+                LessonCompletionModel.lesson_id.in_(all_lesson_ids),
+            )
+            .all()
+            if all_lesson_ids
+            else []
+        )
+        completed_lesson_ids = {item.lesson_id for item in completed_lessons}
+
+        payload = []
+        for enrollment in enrollments:
+            lesson_ids = lessons_by_course_id.get(enrollment.course_id, [])
+            total_lessons = len(lesson_ids)
+            completed_count = sum(1 for lesson_id in lesson_ids if lesson_id in completed_lesson_ids)
+            progress_percent = round((completed_count / total_lessons) * 100, 2) if total_lessons > 0 else 0.0
+
+            course = course_by_id.get(enrollment.course_id)
+            payload.append(
+                {
+                    "course_id": enrollment.course_id,
+                    "course_title": course.title if course else None,
+                    "total_lessons": total_lessons,
+                    "completed_lessons": completed_count,
+                    "progress_percent": progress_percent,
+                    "is_completed": total_lessons > 0 and completed_count == total_lessons,
+                }
+            )
+
+        return payload
 
     def complete_module(self, username: str, module_id: int):
         # Lógica para marcar um módulo como completo para o usuário

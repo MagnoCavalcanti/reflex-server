@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 
-from ..models import Course as CourseModel, User as UserModel, Module as ModuleModel, Lesson as LessonModel, CourseEnrollment as CourseEnrollmentModel
+from ..models import Course as CourseModel, User as UserModel, Module as ModuleModel, Lesson as LessonModel, CourseEnrollment as CourseEnrollmentModel, LessonQuiz as LessonQuizModel, QuizQuestion as QuizQuestionModel, QuizAnswer as QuizAnswerModel
 from ..schemas import Course as CourseSchema
 
 class CoursesUseCases:
@@ -234,4 +234,127 @@ class CoursesUseCases:
             "courses_total": len(courses),
             "total_enrollments": len(enrollments),
             "courses_by_enrollments": courses_by_enrollments
+        }
+
+    def get_course_quiz_question_metrics(self, course_id: int, professor_id: int):
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(
+                detail="Curso não encontrado",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if course.professor_id != professor_id:
+            raise HTTPException(
+                detail="Apenas o professor dono do curso pode visualizar métricas de exercícios",
+                status_code=status.HTTP_403_FORBIDDEN
+            )
+
+        modules = self.db.query(ModuleModel).filter(ModuleModel.course_id == course_id).all()
+        if not modules:
+            return {
+                "course_id": course_id,
+                "questions_total": 0,
+                "answers_total": 0,
+                "correct_answers_total": 0,
+                "questions": []
+            }
+
+        module_by_id = {module.id: module for module in modules}
+        module_ids = list(module_by_id.keys())
+
+        lessons = self.db.query(LessonModel).filter(LessonModel.module_id.in_(module_ids)).all()
+        if not lessons:
+            return {
+                "course_id": course_id,
+                "questions_total": 0,
+                "answers_total": 0,
+                "correct_answers_total": 0,
+                "questions": []
+            }
+
+        lesson_by_id = {lesson.id: lesson for lesson in lessons}
+        lesson_ids = list(lesson_by_id.keys())
+
+        quizzes = self.db.query(LessonQuizModel).filter(LessonQuizModel.lesson_id.in_(lesson_ids)).all()
+        if not quizzes:
+            return {
+                "course_id": course_id,
+                "questions_total": 0,
+                "answers_total": 0,
+                "correct_answers_total": 0,
+                "questions": []
+            }
+
+        quiz_by_id = {quiz.id: quiz for quiz in quizzes}
+        quiz_ids = list(quiz_by_id.keys())
+
+        questions = self.db.query(QuizQuestionModel).filter(QuizQuestionModel.quiz_id.in_(quiz_ids)).all()
+        if not questions:
+            return {
+                "course_id": course_id,
+                "questions_total": 0,
+                "answers_total": 0,
+                "correct_answers_total": 0,
+                "questions": []
+            }
+
+        question_ids = [question.id for question in questions]
+        answers = self.db.query(QuizAnswerModel).filter(QuizAnswerModel.question_id.in_(question_ids)).all()
+
+        answers_by_question: dict[int, dict[str, int]] = {}
+        for answer in answers:
+            stats = answers_by_question.setdefault(answer.question_id, {"total": 0, "correct": 0})
+            stats["total"] += 1
+            if answer.is_correct:
+                stats["correct"] += 1
+
+        questions_payload = []
+        total_answers = 0
+        total_correct_answers = 0
+
+        for question in questions:
+            stats = answers_by_question.get(question.id, {"total": 0, "correct": 0})
+            total = stats["total"]
+            correct = stats["correct"]
+            total_answers += total
+            total_correct_answers += correct
+            accuracy = round((correct / total) * 100, 2) if total > 0 else 0.0
+
+            quiz = quiz_by_id.get(question.quiz_id)
+            lesson = lesson_by_id.get(quiz.lesson_id) if quiz else None
+            module = module_by_id.get(lesson.module_id) if lesson else None
+
+            questions_payload.append(
+                {
+                    "question_id": question.id,
+                    "question_text": question.question_text,
+                    "module_id": module.id if module else None,
+                    "module_title": module.title if module else None,
+                    "lesson_id": lesson.id if lesson else None,
+                    "lesson_title": lesson.title if lesson else None,
+                    "total_answers": total,
+                    "correct_answers": correct,
+                    "accuracy_percent": accuracy,
+                    "order_index": module.order_index if module else 9999,
+                }
+            )
+
+        questions_payload = sorted(
+            questions_payload,
+            key=lambda item: (
+                item["order_index"],
+                item["lesson_id"] or 0,
+                item["question_id"]
+            )
+        )
+        for item in questions_payload:
+            del item["order_index"]
+
+        return {
+            "course_id": course_id,
+            "questions_total": len(questions_payload),
+            "answers_total": total_answers,
+            "correct_answers_total": total_correct_answers,
+            "questions": questions_payload
         }

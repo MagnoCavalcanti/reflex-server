@@ -1,5 +1,4 @@
-from pydantic import BaseModel, field_validator, model_validator
-from typing import Optional
+from pydantic import BaseModel, field_validator
 from fastapi import HTTPException, status
 
 
@@ -12,7 +11,7 @@ class LessonVideo(BaseModel):
 
 
 class QuizOption(BaseModel):
-    question_id: int
+    question_id: int | None = None
     option_text: str
     is_correct: bool = False
 
@@ -20,7 +19,7 @@ class QuizOption(BaseModel):
         orm_mode = True
 
 class QuizQuestion(BaseModel):
-    quiz_id: int
+    quiz_id: int | None = None
     question_text: str
     options: list[QuizOption]
 

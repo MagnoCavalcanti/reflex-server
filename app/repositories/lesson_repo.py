@@ -11,7 +11,33 @@ class LessonUseCases:
         self.db = db_session
 
     def list_all(self):
-        return self.db.query(LessonModel).all()
+        lessons = self.db.query(LessonModel).all()
+        if not lessons:
+            return []
+
+        lesson_ids = [lesson.id for lesson in lessons]
+        videos = (
+            self.db.query(LessonVideoModel)
+            .filter(LessonVideoModel.lesson_id.in_(lesson_ids))
+            .order_by(LessonVideoModel.id.desc())
+            .all()
+        )
+
+        latest_video_by_lesson_id: dict[int, str] = {}
+        for video in videos:
+            if video.lesson_id not in latest_video_by_lesson_id:
+                latest_video_by_lesson_id[video.lesson_id] = video.video_url
+
+        return [
+            {
+                "id": lesson.id,
+                "title": lesson.title,
+                "content_type": lesson.content_type,
+                "module_id": lesson.module_id,
+                "video_url": latest_video_by_lesson_id.get(lesson.id),
+            }
+            for lesson in lessons
+        ]
 
     def _require_course_owner_from_module(self, module_id: int, username: str):
         user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
@@ -124,6 +150,36 @@ class LessonUseCases:
             self.db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao criar quiz da aula: " + str(e))
         return lesson_quiz
+
+    def get_quiz_by_lesson_id(self, lesson_id: int):
+        lesson = self.db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
+        if not lesson:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")
+
+        quiz = self.db.query(LessonQuizModel).filter(LessonQuizModel.lesson_id == lesson_id).first()
+        if not quiz:
+            return {"lesson_id": lesson_id, "quiz_id": None, "questions": []}
+
+        questions = self.db.query(QuizQuestionModel).filter(QuizQuestionModel.quiz_id == quiz.id).all()
+        payload_questions = []
+        for question in questions:
+            options = self.db.query(QuizOptionModel).filter(QuizOptionModel.question_id == question.id).all()
+            payload_questions.append(
+                {
+                    "id": question.id,
+                    "question_text": question.question_text,
+                    "options": [
+                        {
+                            "id": option.id,
+                            "option_text": option.option_text,
+                            "is_correct": option.is_correct
+                        }
+                        for option in options
+                    ]
+                }
+            )
+
+        return {"lesson_id": lesson_id, "quiz_id": quiz.id, "questions": payload_questions}
 
     def add_question_to_quiz(self, question: QuizQuestionSchema, username: str):
         quiz = self.db.query(LessonQuizModel).filter(LessonQuizModel.id == question.quiz_id).first()

@@ -88,6 +88,15 @@ def get_quiz_questions(quiz_id: int, db: Session = Depends(get_db_session)):
         status_code=status.HTTP_200_OK
     )
 
+@lesson_router.get("/{lesson_id}/quiz")
+def get_lesson_quiz(lesson_id: int, db: Session = Depends(get_db_session)):
+    lesson_uc = LessonUseCases(db)
+    quiz = lesson_uc.get_quiz_by_lesson_id(lesson_id)
+    return JSONResponse(
+        content=jsonable_encoder(quiz),
+        status_code=status.HTTP_200_OK
+    )
+
 @lesson_router.post("/quiz/question")
 def add_question_to_quiz(
     question: QuizQuestionSchema,

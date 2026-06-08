@@ -44,6 +44,41 @@ class UserUseCases:
         self.db.commit()
         self.db.refresh(enrollment)
 
+    def list_students_by_course(self, course_id: int, professor_username: str):
+        professor_id = self.user_id_by_username(professor_username)
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
+
+        if course.professor_id != professor_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas o professor dono do curso pode listar alunos"
+            )
+
+        enrollments = self.db.query(EnrollmentModel).filter(EnrollmentModel.course_id == course_id).all()
+        if not enrollments:
+            return []
+
+        student_ids = [enrollment.user_id for enrollment in enrollments]
+        students = self.db.query(UserModel).filter(UserModel.id.in_(student_ids)).all()
+        student_by_id = {student.id: student for student in students}
+
+        return [
+            {
+                "id": enrollment.id,
+                "registration_date": enrollment.registration_date.isoformat() if enrollment.registration_date else None,
+                "student": {
+                    "id": enrollment.user_id,
+                    "username": student_by_id[enrollment.user_id].username if enrollment.user_id in student_by_id else None,
+                    "fullname": student_by_id[enrollment.user_id].fullname if enrollment.user_id in student_by_id else None,
+                    "email": student_by_id[enrollment.user_id].email if enrollment.user_id in student_by_id else None,
+                    "telephone": student_by_id[enrollment.user_id].telephone if enrollment.user_id in student_by_id else None
+                }
+            }
+            for enrollment in enrollments
+        ]
+
     def complete_module(self, username: str, module_id: int):
         # Lógica para marcar um módulo como completo para o usuário
         try:

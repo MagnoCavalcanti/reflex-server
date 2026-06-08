@@ -106,3 +106,16 @@ def list_course_modules(course_id: int, db: Session = Depends(get_db_session)):
         content=jsonable_encoder(modules),
         status_code=status.HTTP_200_OK
     )
+
+@course_router.get("/{course_id}/students")
+def list_course_students(
+    course_id: int,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    students = user_uc.list_students_by_course(course_id, current_user["sub"])
+    return JSONResponse(
+        content=jsonable_encoder(students),
+        status_code=status.HTTP_200_OK
+    )

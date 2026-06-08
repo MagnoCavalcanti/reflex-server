@@ -173,6 +173,83 @@ class UserUseCases:
         )
         return [lesson_id for (lesson_id,) in completions]
 
+    def get_course_certificate_payload(self, username: str, course_id: int):
+        user = self.db.query(UserModel).filter(UserModel.username == username).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não existe")
+
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
+
+        enrollment = (
+            self.db.query(EnrollmentModel)
+            .filter(EnrollmentModel.user_id == user.id, EnrollmentModel.course_id == course_id)
+            .first()
+        )
+        if not enrollment:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Aluno não matriculado neste curso"
+            )
+
+        modules = self.db.query(ModuleModel.id).filter(ModuleModel.course_id == course_id).all()
+        module_ids = [module_id for (module_id,) in modules]
+        lessons = (
+            self.db.query(LessonModel.id).filter(LessonModel.module_id.in_(module_ids)).all()
+            if module_ids
+            else []
+        )
+        lesson_ids = [lesson_id for (lesson_id,) in lessons]
+
+        completed_lesson_ids = set()
+        if lesson_ids:
+            completions = (
+                self.db.query(LessonCompletionModel.lesson_id)
+                .filter(
+                    LessonCompletionModel.user_id == user.id,
+                    LessonCompletionModel.lesson_id.in_(lesson_ids),
+                )
+                .all()
+            )
+            completed_lesson_ids = {lesson_id for (lesson_id,) in completions}
+
+        total_lessons = len(lesson_ids)
+        completed_lessons = len(completed_lesson_ids)
+        progress_percent = round((completed_lessons / total_lessons) * 100, 2) if total_lessons > 0 else 0.0
+        eligible = total_lessons > 0 and completed_lessons == total_lessons
+
+        professor = self.db.query(UserModel).filter(UserModel.id == course.professor_id).first()
+        student_name = user.fullname if user.fullname and user.fullname.strip() else user.username
+        professor_name = (
+            professor.fullname if professor and professor.fullname and professor.fullname.strip()
+            else (professor.username if professor else None)
+        )
+
+        issued_at = date.today().isoformat() if eligible else None
+        certificate_text = None
+        if eligible:
+            certificate_text = (
+                "CERTIFICADO DE CONCLUSAO\n\n"
+                f"Certificamos que {student_name} concluiu com aproveitamento o curso "
+                f"'{course.title}', com carga de estudo correspondente ao conteudo disponibilizado na plataforma.\n\n"
+                f"Professor responsavel: {professor_name or 'Não informado'}\n"
+                f"Data de emissao: {issued_at}\n"
+            )
+
+        return {
+            "course_id": course.id,
+            "course_title": course.title,
+            "student_name": student_name,
+            "professor_name": professor_name,
+            "total_lessons": total_lessons,
+            "completed_lessons": completed_lessons,
+            "progress_percent": progress_percent,
+            "eligible": eligible,
+            "issued_at": issued_at,
+            "certificate_text": certificate_text,
+        }
+
     def complete_module(self, username: str, module_id: int):
         # Lógica para marcar um módulo como completo para o usuário
         try:

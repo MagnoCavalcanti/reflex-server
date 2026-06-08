@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from ..utils import get_db_session, get_current_user
 from ..repositories import CoursesUseCases, UserUseCases, ModuleUseCases
 from ..schemas import Course as CourseSchema
+from io import BytesIO
+from fastapi.responses import StreamingResponse
 
 
 course_router = APIRouter(prefix="/courses")
@@ -173,3 +175,31 @@ def get_student_completed_lessons_by_course(
         content=jsonable_encoder({"course_id": course_id, "lesson_ids": lesson_ids}),
         status_code=status.HTTP_200_OK
     )
+
+@course_router.get("/{course_id}/students/me/certificate")
+def get_student_course_certificate(
+    course_id: int,
+    download: bool = Query(default=False),
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    certificate = user_uc.get_course_certificate_payload(current_user["sub"], course_id)
+
+    if not download:
+        return JSONResponse(
+            content=jsonable_encoder(certificate),
+            status_code=status.HTTP_200_OK
+        )
+
+    if not certificate["eligible"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Curso ainda não concluído para emissão de certificado"
+        )
+
+    safe_course_title = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in certificate["course_title"])
+    filename = f"certificado_{safe_course_title}_{course_id}.txt"
+    file_buffer = BytesIO((certificate["certificate_text"] or "").encode("utf-8"))
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(file_buffer, media_type="text/plain; charset=utf-8", headers=headers)

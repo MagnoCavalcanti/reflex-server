@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import date
+import hashlib
 
 from ..models import User as UserModel
 from ..models import CourseEnrollment as EnrollmentModel, Course as CourseModel, Module as ModuleModel, Lesson as LessonModel, ModuleCompletion as ModuleCompletionModel, LessonCompletion as LessonCompletionModel, QuizAnswer as QuizAnswerModel, QuizOption as QuizOptionModel, QuizAttempt as QuizAttemptModel, QuizQuestion as QuizQuestionModel
@@ -228,13 +229,21 @@ class UserUseCases:
 
         issued_at = date.today().isoformat() if eligible else None
         certificate_text = None
+        verification_code = None
+        digital_signature = None
         if eligible:
+            verification_seed = f"{course.id}:{user.id}:{issued_at}"
+            verification_hash = hashlib.sha256(verification_seed.encode("utf-8")).hexdigest().upper()
+            verification_code = f"CERT-{course.id}-{user.id}-{verification_hash[:10]}"
+            digital_signature = verification_hash
             certificate_text = (
                 "CERTIFICADO DE CONCLUSAO\n\n"
                 f"Certificamos que {student_name} concluiu com aproveitamento o curso "
                 f"'{course.title}', com carga de estudo correspondente ao conteudo disponibilizado na plataforma.\n\n"
                 f"Professor responsavel: {professor_name or 'Não informado'}\n"
                 f"Data de emissao: {issued_at}\n"
+                f"Código de verificação: {verification_code}\n"
+                f"Assinatura digital: {digital_signature}\n"
             )
 
         return {
@@ -248,6 +257,8 @@ class UserUseCases:
             "eligible": eligible,
             "issued_at": issued_at,
             "certificate_text": certificate_text,
+            "verification_code": verification_code,
+            "digital_signature": digital_signature,
         }
 
     def complete_module(self, username: str, module_id: int):

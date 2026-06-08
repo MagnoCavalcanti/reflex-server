@@ -8,6 +8,160 @@ from ..repositories import CoursesUseCases, UserUseCases, ModuleUseCases
 from ..schemas import Course as CourseSchema
 from io import BytesIO
 from fastapi.responses import StreamingResponse
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+
+
+def _build_certificate_pdf(certificate: dict) -> bytes:
+    buffer = BytesIO()
+    page_width, page_height = landscape(A4)
+    pdf = canvas.Canvas(buffer, pagesize=(page_width, page_height))
+
+    # Base colors aligned with frontend palette (indigo/blue/gray).
+    indigo_dark = colors.HexColor("#1e1b4b")
+    indigo = colors.HexColor("#3730a3")
+    blue = colors.HexColor("#2563eb")
+    blue_light = colors.HexColor("#60a5fa")
+    slate = colors.HexColor("#334155")
+    slate_light = colors.HexColor("#cbd5e1")
+    white = colors.white
+
+    # Background.
+    pdf.setFillColor(colors.HexColor("#f8fafc"))
+    pdf.rect(0, 0, page_width, page_height, stroke=0, fill=1)
+
+    # Diagonal watermark.
+    pdf.saveState()
+    pdf.translate(page_width / 2, page_height / 2)
+    pdf.rotate(35)
+    pdf.setFillColor(colors.HexColor("#e2e8f0"))
+    pdf.setFillAlpha(0.3)
+    pdf.setFont("Helvetica-Bold", 120)
+    pdf.drawCentredString(0, 0, "CERTIFICADO")
+    pdf.setFillAlpha(1)
+    pdf.restoreState()
+
+    # Double frame.
+    margin = 24
+    pdf.setStrokeColor(slate_light)
+    pdf.setLineWidth(2)
+    pdf.rect(margin, margin, page_width - (margin * 2), page_height - (margin * 2), stroke=1, fill=0)
+    pdf.setStrokeColor(colors.HexColor("#94a3b8"))
+    pdf.setLineWidth(0.8)
+    pdf.rect(margin + 10, margin + 10, page_width - (margin * 2) - 20, page_height - (margin * 2) - 20, stroke=1, fill=0)
+
+    # Decorative ribbons and corners.
+    pdf.setFillColor(indigo_dark)
+    pdf.rect(0, page_height - 70, page_width, 70, stroke=0, fill=1)
+    pdf.setFillColor(indigo)
+    pdf.rect(0, page_height - 78, page_width * 0.6, 8, stroke=0, fill=1)
+    pdf.setFillColor(blue)
+    pdf.rect(0, 0, page_width, 36, stroke=0, fill=1)
+    pdf.setFillColor(indigo)
+    pdf.rect(0, 36, page_width, 10, stroke=0, fill=1)
+    pdf.setFillColor(blue_light)
+    pdf.rect(page_width * 0.35, 46, page_width * 0.65, 6, stroke=0, fill=1)
+
+    # Corner polygons for premium look.
+    pdf.setFillColor(colors.HexColor("#0f172a"))
+    top_left = pdf.beginPath()
+    top_left.moveTo(0, page_height)
+    top_left.lineTo(120, page_height)
+    top_left.lineTo(0, page_height - 70)
+    top_left.close()
+    pdf.drawPath(top_left, stroke=0, fill=1)
+
+    bottom_right = pdf.beginPath()
+    bottom_right.moveTo(page_width, 0)
+    bottom_right.lineTo(page_width - 130, 0)
+    bottom_right.lineTo(page_width, 70)
+    bottom_right.close()
+    pdf.drawPath(bottom_right, stroke=0, fill=1)
+
+    # Header.
+    pdf.setFillColor(white)
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(40, page_height - 42, "Plataforma de Cursos")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(40, page_height - 58, "Certificação de conclusão")
+    pdf.setFont("Helvetica-Bold", 34)
+    pdf.drawCentredString(page_width / 2, page_height - 122, "CERTIFICADO")
+
+    # Main text.
+    student_name = certificate.get("student_name") or "Aluno(a)"
+    course_title = certificate.get("course_title") or "Curso"
+    professor_name = certificate.get("professor_name") or "Professor não informado"
+    issued_at = certificate.get("issued_at") or "-"
+    verification_code = certificate.get("verification_code") or "-"
+    digital_signature = certificate.get("digital_signature") or "-"
+
+    pdf.setFillColor(slate)
+    pdf.setFont("Helvetica", 14)
+    pdf.drawCentredString(page_width / 2, page_height - 175, "Certificamos que")
+
+    pdf.setFont("Times-BoldItalic", 34)
+    pdf.setFillColor(indigo_dark)
+    pdf.drawCentredString(page_width / 2, page_height - 220, student_name[:60])
+
+    pdf.setFillColor(slate)
+    pdf.setFont("Helvetica", 14)
+    pdf.drawCentredString(page_width / 2, page_height - 257, "concluiu com êxito o curso")
+
+    pdf.setFillColor(indigo)
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawCentredString(page_width / 2, page_height - 290, course_title[:70])
+
+    # Divider line.
+    pdf.setStrokeColor(colors.HexColor("#94a3b8"))
+    pdf.setLineWidth(1)
+    pdf.line((page_width / 2) - 210, page_height - 304, (page_width / 2) + 210, page_height - 304)
+
+    pdf.setFillColor(slate)
+    pdf.setFont("Helvetica", 12)
+    pdf.drawCentredString(page_width / 2, page_height - 324, f"Professor responsável: {professor_name[:60]}")
+    pdf.drawCentredString(page_width / 2, page_height - 344, f"Data de emissão: {issued_at}")
+
+    # Left-side seal.
+    seal_x = 95
+    seal_y = 120
+    pdf.setFillColor(colors.HexColor("#dbeafe"))
+    pdf.circle(seal_x, seal_y, 42, stroke=0, fill=1)
+    pdf.setStrokeColor(indigo)
+    pdf.setLineWidth(2)
+    pdf.circle(seal_x, seal_y, 42, stroke=1, fill=0)
+    pdf.setLineWidth(1)
+    pdf.circle(seal_x, seal_y, 34, stroke=1, fill=0)
+    pdf.setFillColor(indigo_dark)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawCentredString(seal_x, seal_y + 4, "CURSO")
+    pdf.drawCentredString(seal_x, seal_y - 10, "CONCLUÍDO")
+
+    # Signature area.
+    signature_y = 110
+    line_width = 220
+    left_x = (page_width / 2) - 260
+    right_x = (page_width / 2) + 40
+    pdf.setStrokeColor(colors.HexColor("#64748b"))
+    pdf.setLineWidth(1)
+    pdf.line(left_x, signature_y, left_x + line_width, signature_y)
+    pdf.line(right_x, signature_y, right_x + line_width, signature_y)
+
+    pdf.setFont("Helvetica", 11)
+    pdf.setFillColor(colors.HexColor("#475569"))
+    pdf.drawCentredString(left_x + (line_width / 2), signature_y - 18, "Diretoria Pedagógica")
+    pdf.drawCentredString(right_x + (line_width / 2), signature_y - 18, "Aluno(a)")
+
+    # Footer legend.
+    pdf.setFont("Helvetica", 9)
+    pdf.setFillColor(white)
+    pdf.drawRightString(page_width - 32, 28, f"Código de verificação: {verification_code}")
+    signature_preview = digital_signature[:18] + "..." + digital_signature[-10:] if len(digital_signature) > 32 else digital_signature
+    pdf.drawRightString(page_width - 32, 18, f"Assinatura digital: {signature_preview}")
+
+    pdf.showPage()
+    pdf.save()
+    return buffer.getvalue()
 
 
 course_router = APIRouter(prefix="/courses")
@@ -199,7 +353,7 @@ def get_student_course_certificate(
         )
 
     safe_course_title = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in certificate["course_title"])
-    filename = f"certificado_{safe_course_title}_{course_id}.txt"
-    file_buffer = BytesIO((certificate["certificate_text"] or "").encode("utf-8"))
+    filename = f"certificado_{safe_course_title}_{course_id}.pdf"
+    file_buffer = BytesIO(_build_certificate_pdf(certificate))
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    return StreamingResponse(file_buffer, media_type="text/plain; charset=utf-8", headers=headers)
+    return StreamingResponse(file_buffer, media_type="application/pdf", headers=headers)

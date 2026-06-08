@@ -32,6 +32,30 @@ from app.models import (
 
 crypt_context = CryptContext(schemes=["sha256_crypt"])
 DEFAULT_USER_PASSWORD = "12345678"
+FIRST_NAMES = [
+    "João",
+    "Maria",
+    "Pedro",
+    "Ana",
+    "Lucas",
+    "Beatriz",
+    "Rafael",
+    "Carla",
+    "Bruno",
+    "Juliana",
+]
+LAST_NAMES = [
+    "Silva",
+    "Santos",
+    "Oliveira",
+    "Souza",
+    "Costa",
+    "Pereira",
+    "Rodrigues",
+    "Almeida",
+    "Nascimento",
+    "Lima",
+]
 
 
 COURSE_SOURCES = [
@@ -93,6 +117,12 @@ def infer_area_and_level(title: str, idx: int) -> tuple[str, str]:
     if any(word in title_lower for word in ["git", "github", "algoritmos", "estrutura", "poo", "clean"]):
         return "Fundamentos", "Iniciante"
     return ("Back-end" if idx % 2 == 0 else "Front-end", "Intermediário")
+
+
+def build_full_name(index: int, offset: int = 0) -> str:
+    first_name = FIRST_NAMES[(index + offset) % len(FIRST_NAMES)]
+    last_name = LAST_NAMES[(index * 2 + offset) % len(LAST_NAMES)]
+    return f"{first_name} {last_name}"
 
 
 def extract_public_playlist_videos(url: str) -> list[dict]:
@@ -167,12 +197,13 @@ def create_users(session) -> tuple[list[User], list[User]]:
     students: list[User] = []
 
     for i in range(1, 9):
+        full_name = build_full_name(i - 1, offset=1)
         user = User(
             username=f"prof{i}",
             # Mesma senha para todos os usuários, facilitando login em ambiente de seed.
             password=crypt_context.hash(DEFAULT_USER_PASSWORD),
             email=f"prof{i}@seed.local",
-            fullname=f"Professor {i}",
+            fullname=full_name,
             telephone=f"(11) 9{i:04d}-{i:04d}",
             type_user="P",
         )
@@ -180,12 +211,13 @@ def create_users(session) -> tuple[list[User], list[User]]:
         professors.append(user)
 
     for i in range(1, 21):
+        full_name = build_full_name(i - 1, offset=5)
         user = User(
             username=f"aluno{i}",
             # Mesma senha para todos os usuários, facilitando login em ambiente de seed.
             password=crypt_context.hash(DEFAULT_USER_PASSWORD),
             email=f"aluno{i}@seed.local",
-            fullname=f"Aluno {i}",
+            fullname=full_name,
             telephone=f"(21) 9{i:04d}-{(i + 1000):04d}",
             type_user="A",
         )

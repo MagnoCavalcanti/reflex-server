@@ -217,6 +217,11 @@ class UserUseCases:
             questions = self.db.query(QuizQuestionModel).filter(
                 QuizQuestionModel.quiz_id == quiz_id
             ).all()
+            if not questions:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Quiz não encontrado ou sem perguntas cadastradas"
+                )
             
             # Verificar se o usuário já respondeu ao quiz
             existing_attempt = self.db.query(QuizAttemptModel).filter(
@@ -229,12 +234,45 @@ class UserUseCases:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Quiz já foi respondido anteriormente"
                 )
+
+            options = self.db.query(QuizOptionModel).filter(
+                QuizOptionModel.question_id.in_([question.id for question in questions])
+            ).all()
+            option_by_id = {option.id: option for option in options}
+            question_ids = {question.id for question in questions}
+            answered_by_question_id: dict[int, int] = {}
+            for option_id in answer_option_ids:
+                option = option_by_id.get(option_id)
+                if not option:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Opção de resposta {option_id} não encontrada"
+                    )
+                if option.question_id not in question_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Opção de resposta não pertence a este quiz"
+                    )
+                if option.question_id in answered_by_question_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Mais de uma resposta para a mesma pergunta"
+                    )
+                answered_by_question_id[option.question_id] = option_id
+
+            missing_question_ids = [question.id for question in questions if question.id not in answered_by_question_id]
+            if missing_question_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="É necessário responder todas as perguntas do quiz"
+                )
             
             # Criar a resposta do quiz
             quiz_attempt = QuizAttemptModel(
                 user_id=user_id,
                 quiz_id=quiz_id,
-                answer_date=date.today()
+                attempt_date=date.today(),
+                score=0
             )
             self.db.add(quiz_attempt)
             self.db.commit()
@@ -242,32 +280,36 @@ class UserUseCases:
             
             # Adicionar as opções de resposta selecionadas
             score = 0
-            for option_id in answer_option_ids:
-                option = self.db.query(QuizOptionModel).filter(QuizOptionModel.id == option_id).first()
-                if not option:
-                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Opção de resposta {option_id} não encontrada")
+            for question in questions:
+                option_id = answered_by_question_id[question.id]
+                option = option_by_id[option_id]
                 if option.is_correct:
                     score += 1
                 quiz_answer = QuizAnswerModel(
-                    quiz_attempt_id=quiz_attempt.id,
+                    attempt_id=quiz_attempt.id,
                     question_id=option.question_id,
                     selected_option_id=option_id,
                     is_correct=option.is_correct
                 )
                 self.db.add(quiz_answer)
-                self.db.commit()
                 
             # Calcular a pontuação final
-
-            
-            score_percentage = (score / len(questions)) * 100 if questions else 0
+            score_percentage = int(round((score / len(questions)) * 100)) if questions else 0
             quiz_attempt.score = score_percentage
 
             self.db.add(quiz_attempt)
             self.db.commit()
             self.db.refresh(quiz_attempt)
+            return {
+                "attempt_id": quiz_attempt.id,
+                "score": quiz_attempt.score,
+                "correct_answers": score,
+                "total_questions": len(questions),
+            }
 
         except HTTPException:
+            self.db.rollback()
             raise
         except Exception as e:
+            self.db.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Erro ao responder quiz: " + str(e))

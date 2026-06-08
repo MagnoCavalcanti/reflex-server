@@ -89,9 +89,13 @@ def get_quiz_questions(quiz_id: int, db: Session = Depends(get_db_session)):
     )
 
 @lesson_router.get("/{lesson_id}/quiz")
-def get_lesson_quiz(lesson_id: int, db: Session = Depends(get_db_session)):
+def get_lesson_quiz(
+    lesson_id: int,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
     lesson_uc = LessonUseCases(db)
-    quiz = lesson_uc.get_quiz_by_lesson_id(lesson_id)
+    quiz = lesson_uc.get_quiz_with_attempt_by_lesson_id(lesson_id, current_user["sub"])
     return JSONResponse(
         content=jsonable_encoder(quiz),
         status_code=status.HTTP_200_OK
@@ -119,10 +123,13 @@ def answer_quiz(
     current_user: dict = Depends(get_current_user)
 ):
     user_uc = UserUseCases(db)
-    user_uc.answer_quiz(current_user["sub"], quiz_id, answer_option_ids)
-    user_uc.complete_lesson(current_user["sub"], lesson_id=lesson_id)
+    attempt = user_uc.answer_quiz(current_user["sub"], quiz_id, answer_option_ids)
+    try:
+        user_uc.complete_lesson(current_user["sub"], lesson_id=lesson_id)
+    except Exception:
+        pass
     return JSONResponse(
-        content={ "msg": "success" },
+        content={ "msg": "success", "attempt": attempt },
         status_code=status.HTTP_200_OK
     )
 

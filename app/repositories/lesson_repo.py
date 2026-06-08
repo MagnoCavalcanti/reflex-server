@@ -181,6 +181,70 @@ class LessonUseCases:
 
         return {"lesson_id": lesson_id, "quiz_id": quiz.id, "questions": payload_questions}
 
+    def get_quiz_with_attempt_by_lesson_id(self, lesson_id: int, username: str):
+        from ..models import QuizAttempt as QuizAttemptModel, QuizAnswer as QuizAnswerModel
+
+        user_id = self.db.query(UserModel.id).filter(UserModel.username == username).scalar()
+        if not user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não existe")
+
+        lesson = self.db.query(LessonModel).filter(LessonModel.id == lesson_id).first()
+        if not lesson:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aula não encontrada")
+
+        quiz = self.db.query(LessonQuizModel).filter(LessonQuizModel.lesson_id == lesson_id).first()
+        if not quiz:
+            return {"lesson_id": lesson_id, "quiz_id": None, "questions": [], "attempt": None}
+
+        questions = self.db.query(QuizQuestionModel).filter(QuizQuestionModel.quiz_id == quiz.id).all()
+        payload_questions = []
+        for question in questions:
+            options = self.db.query(QuizOptionModel).filter(QuizOptionModel.question_id == question.id).all()
+            payload_questions.append(
+                {
+                    "id": question.id,
+                    "question_text": question.question_text,
+                    "options": [
+                        {
+                            "id": option.id,
+                            "option_text": option.option_text,
+                            "is_correct": option.is_correct
+                        }
+                        for option in options
+                    ]
+                }
+            )
+
+        attempt = (
+            self.db.query(QuizAttemptModel)
+            .filter(QuizAttemptModel.user_id == user_id, QuizAttemptModel.quiz_id == quiz.id)
+            .order_by(QuizAttemptModel.id.desc())
+            .first()
+        )
+        if not attempt:
+            return {
+                "lesson_id": lesson_id,
+                "quiz_id": quiz.id,
+                "questions": payload_questions,
+                "attempt": None,
+            }
+
+        answers = self.db.query(QuizAnswerModel).filter(QuizAnswerModel.attempt_id == attempt.id).all()
+        selected_options_by_question_id = {
+            answer.question_id: answer.selected_option_id for answer in answers
+        }
+
+        return {
+            "lesson_id": lesson_id,
+            "quiz_id": quiz.id,
+            "questions": payload_questions,
+            "attempt": {
+                "attempt_id": attempt.id,
+                "score": attempt.score,
+                "selected_options_by_question_id": selected_options_by_question_id,
+            },
+        }
+
     def add_question_to_quiz(self, question: QuizQuestionSchema, username: str):
         quiz = self.db.query(LessonQuizModel).filter(LessonQuizModel.id == question.quiz_id).first()
         if not quiz:

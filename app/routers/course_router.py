@@ -160,3 +160,16 @@ def get_student_progress(
         content=jsonable_encoder(progress),
         status_code=status.HTTP_200_OK
     )
+
+@course_router.get("/{course_id}/students/me/completed-lessons")
+def get_student_completed_lessons_by_course(
+    course_id: int,
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(get_current_user)
+):
+    user_uc = UserUseCases(db)
+    lesson_ids = user_uc.get_completed_lesson_ids_by_course(current_user["sub"], course_id)
+    return JSONResponse(
+        content=jsonable_encoder({"course_id": course_id, "lesson_ids": lesson_ids}),
+        status_code=status.HTTP_200_OK
+    )

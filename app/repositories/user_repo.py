@@ -146,6 +146,33 @@ class UserUseCases:
 
         return payload
 
+    def get_completed_lesson_ids_by_course(self, username: str, course_id: int):
+        user_id = self.user_id_by_username(username)
+
+        course = self.db.query(CourseModel).filter(CourseModel.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Curso não encontrado")
+
+        modules = self.db.query(ModuleModel.id).filter(ModuleModel.course_id == course_id).all()
+        module_ids = [module_id for (module_id,) in modules]
+        if not module_ids:
+            return []
+
+        lessons = self.db.query(LessonModel.id).filter(LessonModel.module_id.in_(module_ids)).all()
+        lesson_ids = [lesson_id for (lesson_id,) in lessons]
+        if not lesson_ids:
+            return []
+
+        completions = (
+            self.db.query(LessonCompletionModel.lesson_id)
+            .filter(
+                LessonCompletionModel.user_id == user_id,
+                LessonCompletionModel.lesson_id.in_(lesson_ids),
+            )
+            .all()
+        )
+        return [lesson_id for (lesson_id,) in completions]
+
     def complete_module(self, username: str, module_id: int):
         # Lógica para marcar um módulo como completo para o usuário
         try:
